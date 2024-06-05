@@ -1,0 +1,171 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precedent Decision Search</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #searchContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #queryInput {
+            padding: 10px;
+            margin-bottom: 10px;
+            width: 100%;
+            box-sizing: border-box; /* Ensures padding is included in the width */
+        }
+
+        button {
+            padding: 10px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        #results {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1200px;
+            height: 600px; /* Set a fixed height for the results container */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+
+        .resultItem {
+            background-color: #fff;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+
+        .resultItem:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Precedent Decision Search</h1>
+        <div id="searchContainer">
+            <input type="text" id="queryInput" placeholder="Enter your query">
+            <button onclick="search()">Search</button>
+        </div>
+    </div>
+<div id="results"></div>
+<div id="pagination">
+    <button id="prevButton" onclick="prevPage()">Prev</button>
+    <span id="currentPage">1</span>
+    <button id="nextButton" onclick="nextPage()">Next</button>
+</div>
+
+<script>
+    const resultsDiv = document.getElementById('results');
+    const currentPageSpan = document.getElementById('currentPage');
+    const itemsPerPage = 10;
+    let currentPage = 1;
+
+    // Function to update the browser history
+    function updateHistory() {
+        const query = document.getElementById('queryInput').value;
+        const state = { page: currentPage, query: query };
+        const title = `Page ${currentPage} - ${query}`;
+        const url = `/search/${query}/${currentPage}`;
+
+        history.pushState(state, title, url);
+    }
+
+    window.addEventListener('popstate', function (event) {
+        if (event.state) {
+            currentPage = event.state.page;
+            document.getElementById('queryInput').value = event.state.query;
+            search(currentPage);
+        }
+    });
+    // Function to handle when entering query link from browser fix for IE
+    window.onpopstate = function (event) {
+        if (event.state) {
+            currentPage = event.state.page;
+            document.getElementById('queryInput').value = event.state.query;
+            search(currentPage);
+        }
+    };
+
+    function search(page = 1) {
+        var query = document.getElementById('queryInput').value;
+        fetch(`/search/${query}/${page}`)
+            .then(response => response.json())
+            .then(data => displayResults(data.matches, data.scores));
+
+        // Update browser history
+        updateHistory();
+    }
+
+    function displayResults(matches, scores) {
+        // Clear existing results
+        resultsDiv.innerHTML = '';
+
+        matches.forEach((match, index) => {
+            // Extract at most 50 characters from the beginning of the document
+            const shortContent = match.substring(0, 300);
+
+            var resultItem = document.createElement('div');
+            resultItem.classList.add('resultItem');
+            resultItem.innerHTML = `<p><strong>Result ${10*(currentPage-1) + index + 1}, Score ${scores[index]}:<br></strong> ${shortContent}...</p>`;
+            resultsDiv.appendChild(resultItem);
+
+            // Add a click event to navigate to the full document (adjust the URL as needed)
+            resultItem.addEventListener('click', function () {
+                window.location.href = '/document/' + (10*(currentPage-1) + index + 1);
+            });
+        });
+
+        // Update current page
+        currentPageSpan.textContent = `${currentPage}`;
+
+        // Scroll to the top of the results container
+        resultsDiv.scrollTop = 0;
+    }
+
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            search(currentPage);
+        }
+    }
+
+    function nextPage() {
+        // Assuming you have a way to determine the total number of results
+        const totalResults = 250000; // Replace with your actual total result count
+
+        const totalPages = Math.ceil(totalResults / itemsPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            search(currentPage);
+        }
+    }
+</script>
